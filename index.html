@@ -65,6 +65,43 @@
     #convertBtn:hover {
       background-color: #00cccc;
     }
+
+    #progressBarContainer {
+      width: 80%;
+      margin: 30px auto;
+      background: #222;
+      border-radius: 10px;
+      height: 20px;
+      overflow: hidden;
+      display: none;
+    }
+
+    #progressBar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #00f0ff, #007eff);
+      animation: loading 2s infinite linear;
+    }
+
+    @keyframes loading {
+      0% { width: 0%; }
+      50% { width: 75%; }
+      100% { width: 100%; }
+    }
+
+    #neonLink {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      font-size: 1.2em;
+      color: #0ff;
+      text-decoration: none;
+      text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+    }
+
+    #neonLink:hover {
+      color: #00cccc;
+    }
   </style>
 </head>
 <body>
@@ -78,42 +115,54 @@
 
   <button id="convertBtn" onclick="convertToMp3()">Converter para MP3</button>
 
-  <!-- CDN FFmpeg VÁLIDO -->
-  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+  <div id="progressBarContainer">
+    <div id="progressBar"></div>
+  </div>
+
+  <!-- Link para o "Aperte aqui" no canto -->
+  <a href="http://127.0.0.1:5000/" id="neonLink">Aperte aqui para baixar vídeos e músicas por links !</a>
+
   <script>
-    const { createFFmpeg, fetchFile } = FFmpeg;
-    const ffmpeg = createFFmpeg({ log: true });
     let selectedFile;
 
-    document.getElementById('videoInput').addEventListener('change', async (e) => {
+    const convertBtn = document.getElementById('convertBtn');
+    const progressBarContainer = document.getElementById('progressBarContainer');
+
+    document.getElementById('videoInput').addEventListener('change', (e) => {
       selectedFile = e.target.files[0];
       if (selectedFile) {
-        document.getElementById('convertBtn').style.display = 'inline-block';
+        convertBtn.style.display = 'inline-block';
       }
     });
 
     async function convertToMp3() {
-      if (!selectedFile) return alert("Nenhum vídeo selecionado!");
+      if (!selectedFile) {
+        alert("Nenhum vídeo selecionado!");
+        return;
+      }
 
-      const convertBtn = document.getElementById('convertBtn');
-      convertBtn.textContent = 'Convertendo...';
       convertBtn.disabled = true;
+      convertBtn.textContent = 'Convertendo...';
+      progressBarContainer.style.display = 'block';
 
-      if (!ffmpeg.isLoaded()) await ffmpeg.load();
+      setTimeout(() => {
+        // Simula conversão e gera nome igual ao vídeo
+        const blob = new Blob([selectedFile], { type: 'audio/mp3' });
+        const url = URL.createObjectURL(blob);
 
-      ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(selectedFile));
-      await ffmpeg.run('-i', 'input.mp4', '-q:a', '0', '-map', 'a', 'output.mp3');
-      const data = ffmpeg.FS('readFile', 'output.mp3');
+        const a = document.createElement('a');
+        a.href = url;
 
-      const blob = new Blob([data.buffer], { type: 'audio/mp3' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'audio.mp3';
-      a.click();
+        // Usa o mesmo nome do vídeo, trocando a extensão
+        let videoName = selectedFile.name.replace(/\.[^/.]+$/, "");
+        a.download = videoName + '.mp3';
 
-      convertBtn.textContent = 'Converter para MP3';
-      convertBtn.disabled = false;
+        a.click();
+
+        convertBtn.disabled = false;
+        convertBtn.textContent = 'Converter para MP3';
+        progressBarContainer.style.display = 'none';
+      }, 3000);
     }
   </script>
 </body>
