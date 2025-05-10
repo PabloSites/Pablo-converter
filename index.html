@@ -1,101 +1,120 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Pablo Convert</title>
   <style>
     body {
-      background-color: #000;
-      color: #00f7ff;
-      font-family: Arial, sans-serif;
+      margin: 0;
+      background: linear-gradient(to bottom, #000000, #001f3f);
+      font-family: 'Arial', sans-serif;
+      color: #0ff;
       text-align: center;
-      padding: 50px;
     }
 
     h1 {
-      font-size: 3rem;
-      text-shadow: 0 0 10px #00f7ff, 0 0 20px #00f7ff;
+      font-size: 3em;
+      margin-top: 30px;
+      color: #0ff;
+      text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
     }
 
-    .upload-box {
+    #uploadBox {
+      margin: 60px auto;
       width: 300px;
-      height: 300px;
-      border: 2px dashed #00f7ff;
-      margin: 30px auto;
+      height: 200px;
+      border: 3px dashed #0ff;
       border-radius: 20px;
       display: flex;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       flex-direction: column;
       cursor: pointer;
-      color: white;
+      background-color: rgba(255, 255, 255, 0.05);
     }
 
-    input[type="file"] {
-      display: none;
+    #uploadBox:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    #uploadBox span {
+      font-size: 1.5em;
+      color: #fff;
+    }
+
+    #uploadBox .plus {
+      font-size: 4em;
+      color: #0ff;
+      margin-bottom: 10px;
     }
 
     #convertBtn {
-      display: none;
-      background-color: transparent;
-      border: 2px solid #00f7ff;
-      padding: 15px 30px;
-      font-size: 18px;
-      color: #00f7ff;
-      border-radius: 10px;
-      cursor: pointer;
       margin-top: 20px;
-      transition: 0.3s;
+      padding: 15px 30px;
+      background-color: #0ff;
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.2em;
+      font-weight: bold;
+      cursor: pointer;
+      display: none;
     }
 
     #convertBtn:hover {
-      background-color: #00f7ff;
-      color: #000;
+      background-color: #00cccc;
     }
   </style>
 </head>
 <body>
-  <h1 class="neon">Pablo Convert</h1>
+  <h1>Pablo Convert</h1>
 
-  <label class="upload-box" for="videoInput">
-    <span style="font-size: 3rem;">+</span>
-    <p>Importe seu vídeo</p>
-  </label>
-  <input type="file" id="videoInput" accept="video/*">
+  <div id="uploadBox" onclick="document.getElementById('videoInput').click()">
+    <div class="plus">+</div>
+    <span>Importe seu vídeo</span>
+    <input type="file" id="videoInput" accept="video/*" style="display: none" />
+  </div>
 
-  <button id="convertBtn">Converter para MP3</button>
+  <button id="convertBtn" onclick="convertToMp3()">Converter para MP3</button>
 
+  <!-- CDN FFmpeg VÁLIDO -->
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
   <script>
-    const videoInput = document.getElementById("videoInput");
-    const convertBtn = document.getElementById("convertBtn");
+    const { createFFmpeg, fetchFile } = FFmpeg;
+    const ffmpeg = createFFmpeg({ log: true });
     let selectedFile;
 
-    videoInput.addEventListener("change", () => {
-      selectedFile = videoInput.files[0];
+    document.getElementById('videoInput').addEventListener('change', async (e) => {
+      selectedFile = e.target.files[0];
       if (selectedFile) {
-        convertBtn.style.display = "inline-block";
+        document.getElementById('convertBtn').style.display = 'inline-block';
       }
     });
 
-    convertBtn.addEventListener("click", async () => {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
+    async function convertToMp3() {
+      if (!selectedFile) return alert("Nenhum vídeo selecionado!");
 
-      const response = await fetch("https://v2.convertapi.com/convert/mp4/to/mp3?Secret=secret_ositPVSAmf0TiGSU", {
-        method: "POST",
-        body: formData
-      });
+      const convertBtn = document.getElementById('convertBtn');
+      convertBtn.textContent = 'Convertendo...';
+      convertBtn.disabled = true;
 
-      const data = await response.json();
-      if (data.Files && data.Files[0]) {
-        const link = document.createElement("a");
-        link.href = data.Files[0].Url;
-        link.download = "convertido.mp3";
-        link.click();
-      } else {
-        alert("Erro ao converter.");
-      }
-    });
+      if (!ffmpeg.isLoaded()) await ffmpeg.load();
+
+      ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(selectedFile));
+      await ffmpeg.run('-i', 'input.mp4', '-q:a', '0', '-map', 'a', 'output.mp3');
+      const data = ffmpeg.FS('readFile', 'output.mp3');
+
+      const blob = new Blob([data.buffer], { type: 'audio/mp3' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'audio.mp3';
+      a.click();
+
+      convertBtn.textContent = 'Converter para MP3';
+      convertBtn.disabled = false;
+    }
   </script>
 </body>
 </html>
